@@ -1,5 +1,6 @@
 package dev._2lstudios.chatsentinel.bukkit;
 
+import com.tcoded.folialib.FoliaLib;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
@@ -27,6 +28,7 @@ import dev._2lstudios.chatsentinel.shared.modules.SyntaxModerationModule;
 public class ChatSentinel extends JavaPlugin {
 	// Static instance
 	private static ChatSentinel instance;
+	private FoliaLib foliaLib;
 
 	public static ChatSentinel getInstance() {
 		return instance;
@@ -47,6 +49,8 @@ public class ChatSentinel extends JavaPlugin {
 	public void onEnable() {
 		setInstance(this);
 
+		this.foliaLib = new FoliaLib(this);
+
 		ConfigUtil configUtil = new ConfigUtil(this);
 		Server server = getServer();
 
@@ -63,24 +67,23 @@ public class ChatSentinel extends JavaPlugin {
 
 		getCommand("chatsentinel").setExecutor(new ChatSentinelCommand(chatPlayerManager, chatNotificationManager, moduleManager, server));
 
-		getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+		foliaLib.getImpl().runTimerAsync(() -> {
 			if (generalModule.needsNicknameCompile()) {
 				generalModule.compileNicknamesPattern();
 			}
-		}, 20L, 20L);
+		}, 20, 20);
 	}
 
 	public void dispatchCommmands(ModerationModule moderationModule, ChatPlayer chatPlayer, String[][] placeholders) {
 		Server server = getServer();
 
-		server.getScheduler().runTask(this, () -> {
+		getServer().getGlobalRegionScheduler().run(this, task -> {
 			ConsoleCommandSender console = server.getConsoleSender();
 
 			for (String command : moderationModule.getCommands(placeholders)) {
 				server.dispatchCommand(console, command);
 			}
 		});
-
 		chatPlayer.clearWarns();
 	}
 
@@ -91,7 +94,7 @@ public class ChatSentinel extends JavaPlugin {
 		if (notificationMessage != null && !notificationMessage.isEmpty()) {
 			for (ChatPlayer chatPlayer : chatNotificationManager.getAllPlayers()) {
 				Player player = Bukkit.getPlayer(chatPlayer.getUniqueId());
-                if (player != null) {
+				if (player != null) {
 					player.sendMessage(notificationMessage);
 				}
 			}
